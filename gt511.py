@@ -165,10 +165,8 @@ class FingerprintScanner(pattern.Logger):
     self._serial = None
 
   def UsbInternalCheck(self):
-    if self._send_command('UsbInternalCheck'):
-      return [self._get_response(), None]
-    else:
-      raise RuntimeError("Couldn't send packet")
+    self._send_command('UsbInternalCheck')
+    self._get_response()
 
   def set_cmos_led(self, on=False):
     self._send_command('CmosLed', on)
@@ -179,7 +177,7 @@ class FingerprintScanner(pattern.Logger):
     self._get_response()
     self._serial.baudrate = baudrate
 
-  def GetEnrollCount(self):
+  def get_enroll_count(self):
     self._send_command('GetEnrollCount')
     return self._get_response()
 
@@ -195,7 +193,7 @@ class FingerprintScanner(pattern.Logger):
     self._send_command('EnrollStart', position)
     self._get_response()
     print 'Scanning #1...'
-    self.scan()
+    self.capture(best_image=True)
     self._send_command('Enroll1')
     self._get_response()
     print 'Lift finger up...'
@@ -204,7 +202,7 @@ class FingerprintScanner(pattern.Logger):
     print 'Press finger again...'
     while not self.is_finger_pressed():
       time.sleep(0.5)
-    self.scan()
+    self.capture(best_image=True)
     self._send_command('Enroll2')
     self._get_response()
     print 'Lift finger up...'
@@ -213,16 +211,24 @@ class FingerprintScanner(pattern.Logger):
     print 'Press finger again...'
     while not self.is_finger_pressed():
       time.sleep(0.5)
-    self.scan()
+    self.capture(best_image=True)
     self._send_command('Enroll3')
     self._get_response()
 
-  def Enroll3(self):
-    self._send_command('Enroll3')
-    self._get_response()
-
-    data = self.getData(498)
-    return [response, data]
+  def wait_for_finger(self, timeout=None):
+    if timeout is not None:
+      timeout_secs = timeout.total_seconds()
+      while True:
+        if self.is_finger_pressed():
+          return True
+        if timeout_secs <= 0:
+          return False
+        time.sleep(0.2)
+        timeout_secs -= 0.2
+    else:
+      while not self.is_finger_pressed():
+        time.sleep(0.2)
+      return True
 
   def is_finger_pressed(self):
     self._send_command('IsPressFinger')
@@ -232,45 +238,21 @@ class FingerprintScanner(pattern.Logger):
     self._send_command('DeleteID', position)
     self._get_response()
 
-  def DeleteAll(self):
-    if self._send_command('DeleteAll'):
-      return [self._get_response(), None]
-    else:
-      raise RuntimeError("Couldn't send packet")
+  def delete_all(self):
+    self._send_command('DeleteAll')
+    self._get_response()
 
-  def Verify(self, ID):
-    if self._send_command('Verify'):
-      return [self._get_response(), None]
-    else:
-      raise RuntimeError("Couldn't send packet")
+  def verify(self, position):
+    self.capture(best_image=False)
+    self._send_command('Verify', position)
+    self._get_response()
 
   def identify(self):
+    self.capture(best_image=False)
     self._send_command('Identify')
     return self._get_response()
 
-  def VerifyTemplate(self, ID, template):
-    if self._send_command('VerifyTemplate', ID):
-      response = self._get_response()
-    else:
-      raise RuntimeError("Couldn't send packet")
-    if self.sendData(template, 498):
-      data = self._get_response()
-    else:
-      raise RuntimeError("Couldn't send packet (data)")
-    return [response, data]
-
-  def IdentifyTemplate(self, template):
-    if self._send_command('IdentifyTemplate'):
-      response = self._get_response()
-    else:
-      raise RuntimeError("Couldn't send packet")
-    if self.sendData(template, 498):
-      data = self._get_response()
-    else:
-      raise RuntimeError("Couldn't send packet (data)")
-    return [response, data]
-
-  def scan(self, best_image=False):
+  def capture(self, best_image=False):
     # For enrollment use 'best_image = True'
     # For identification use 'best_image = False'
     if best_image:
@@ -279,77 +261,23 @@ class FingerprintScanner(pattern.Logger):
       self._send_command('CaptureFinger', False)
     return self._get_response()
 
-  def MakeTemplate(self):
-    if self._send_command('MakeTemplate'):
-      response = self._get_response()
-    else:
-      raise RuntimeError("Couldn't send packet")
-    self.serial.timeout = 10
-    data = self.getData(498)
-    self.serial.timeout = self.timeout
-    return [response, data]
+  def get_image(self, raw=False):
+    """Captures a fingerprint image (240x216).
 
-  def get_image(self):
-    self._send_command('GetImage')
+    Args:
+      raw: if True, capture regardless if finger is placed on sensor.
+    Returns:
+      A PIL.Image object.
+    Raises:
+      FingerprintScannerException: if fails to capture image.
+    """
+    self._send_command('GetRawImage' if raw else 'GetImage')
     self._get_response()
 
     data_size = self._IMAGE_SIZE[0] * self._IMAGE_SIZE[1]
     data = self._get_data(data_size, 30)
 
     return Image.frombytes('L', self._IMAGE_SIZE, data)
-
-  def GetRawImage(self, dim=(160, 120)):
-    if self._send_command('GetRawImage'):
-      response = self._get_response()
-    else:
-      raise RuntimeError("Couldn't send packet")
-    data = None
-    if response['ACK']:
-      self.serial.timeout = None  # This is dangerous!
-      data = self.getData(dim[0] * dim[1])
-      self.serial.timeout = self.timeout
-      # Add dimensions to the data
-      data['Data'] = (data['Data'], dim)
-    return [response, data]
-
-  def GetTemplate(self, ID):
-    if self._send_command('GetTemplate', ID):
-      response = self._get_response()
-    else:
-      raise RuntimeError("Couldn't send packet")
-    self.serial.timeout = None  # This is dangerous!
-    data = self.getData(498)
-    self.serial.timeout = self.timeout
-    return [response, data]
-
-  def SetTemplate(self, ID, template):
-    if self._send_command('SetTemplate', ID):
-      response = self._get_response()
-    else:
-      raise RuntimeError("Couldn't send packet")
-    if self.sendData(template, 498):
-      data = self._get_response()
-    else:
-      raise RuntimeError("Couldn't send packet (data)")
-    return [response, data]
-
-  def GetDatabaseStart(self):
-    if self._send_command('GetDatabaseStart'):
-      return [self._get_response(), None]
-    else:
-      raise RuntimeError("Couldn't send packet")
-
-  def GetDatabaseEnd(self):
-    if self._send_command('GetDatabaseEnd'):
-      return [self._get_response(), None]
-    else:
-      raise RuntimeError("Couldn't send packet")
-
-  def SetIAPMode(self):
-    if self._send_command('SetIAPMode'):
-      return [self._get_response(), None]
-    else:
-      raise RuntimeError("Couldn't send packet")
 
   def _send_command(self, command, parameter=0, timeout=None):
     self.logger.debug('Sending command {0}...'.format(command))
@@ -463,3 +391,66 @@ class FingerprintScanner(pattern.Logger):
 
 class FingerprintScannerException(Exception):
   pass
+
+
+"""
+  def GetTemplate(self, ID):
+    if self._send_command('GetTemplate', ID):
+      response = self._get_response()
+    else:
+      raise RuntimeError("Couldn't send packet")
+    self.serial.timeout = None  # This is dangerous!
+    data = self.getData(498)
+    self.serial.timeout = self.timeout
+    return [response, data]
+
+  def SetTemplate(self, ID, template):
+    if self._send_command('SetTemplate', ID):
+      response = self._get_response()
+    else:
+      raise RuntimeError("Couldn't send packet")
+    if self.sendData(template, 498):
+      data = self._get_response()
+    else:
+      raise RuntimeError("Couldn't send packet (data)")
+    return [response, data]
+
+  def VerifyTemplate(self, ID, template):
+    if self._send_command('VerifyTemplate', ID):
+      response = self._get_response()
+    else:
+      raise RuntimeError("Couldn't send packet")
+    if self.sendData(template, 498):
+      data = self._get_response()
+    else:
+      raise RuntimeError("Couldn't send packet (data)")
+    return [response, data]
+
+  def IdentifyTemplate(self, template):
+    if self._send_command('IdentifyTemplate'):
+      response = self._get_response()
+    else:
+      raise RuntimeError("Couldn't send packet")
+    if self.sendData(template, 498):
+      data = self._get_response()
+    else:
+      raise RuntimeError("Couldn't send packet (data)")
+    return [response, data]
+
+  def MakeTemplate(self):
+    if self._send_command('MakeTemplate'):
+      response = self._get_response()
+    else:
+      raise RuntimeError("Couldn't send packet")
+    self.serial.timeout = 10
+    data = self.getData(498)
+    self.serial.timeout = self.timeout
+    return [response, data]
+
+  def SetIAPMode(self):
+    if self._send_command('SetIAPMode'):
+      return [self._get_response(), None]
+    else:
+      raise RuntimeError("Couldn't send packet")
+
+"""

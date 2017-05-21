@@ -5,14 +5,19 @@ from hal import gt511
 
 
 def enroll(scanner):
+  position = input('Position to enroll: ')
+  print 'Place finger on scanner now.'
+  scanner.wait_for_finger()
   print 'Enrolling...'
-  if scanner.is_enrolled(0):
-    scanner.delete_position(0)
-  scanner.enroll(0)
+  if scanner.is_enrolled(position):
+    scanner.delete_position(position)
+  scanner.enroll(position)
   print 'Done!'
 
 
 def identify(scanner):
+  print 'Place finger on scanner now.'
+  scanner.wait_for_finger()
   try:
     pos = scanner.identify()
     print 'Identified as #{0}.'.format(pos)
@@ -21,9 +26,10 @@ def identify(scanner):
 
 
 def capture(scanner):
+  print 'Place finger on scanner now.'
+  scanner.wait_for_finger()
   print 'Scanning...'
-  scanner.scan()
-  scanner.set_cmos_led(False)
+  scanner.capture()
   img = scanner.get_image()
   img.save('1.png')
   print 'Saved image.'
@@ -33,17 +39,32 @@ def test_gt511():
   scanner = gt511.FingerprintScanner()
   scanner.initialize()
   scanner.change_baudrate(115200)
+
+  state = ''
+  for i in range(20):
+    state += '[x]' if scanner.is_enrolled(i) else '[ ]'
+  print 'Enrollment: ' + state
   try:
     scanner.set_cmos_led(True)
-    print 'Ready to scan...'
-    while not scanner.is_finger_pressed():
-      time.sleep(0.5)
-
-    identify(scanner)
-    # capture(scanner)
+    while True:
+      print 'Options:'
+      print '  1. Enroll'
+      print '  2. Identify'
+      print '  3. Capture'
+      print '  0. Exit'
+      option = input('Please choose: ')
+      if option == 0:
+        break
+      elif option == 1:
+        enroll(scanner)
+      elif option == 2:
+        identify(scanner)
+      elif option == 3:
+        capture(scanner)
   except Exception as e:
     print 'exception: {0}'.format(e)
   finally:
+    scanner.set_cmos_led(False)
     scanner.close()
 
 
