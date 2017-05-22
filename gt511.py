@@ -5,12 +5,14 @@ To use GT-511C1R fingerprint scanner, make sure:
   2. Disable serial console
 """
 
-from PIL import Image
+import datetime
 import os
 import serial
 import struct
 import sys
 import time
+
+from PIL import Image
 
 from common import pattern
 
@@ -113,14 +115,12 @@ class FingerprintScanner(pattern.Logger):
     if not os.path.exists(port):
       raise IOError("Port " + port + " cannot be opened!")
 
-    self._baudrate = baudrate
     self._device_id = device_id
     self._timeout = timeout
     self._save = False
 
     self.logger.debug('Opening port {0}...'.format(port))
-    self._serial = serial.Serial(
-        port=port, baudrate=self._baudrate, timeout=timeout)
+    self._serial = serial.Serial(port=port, baudrate=baudrate, timeout=timeout)
     self.logger.debug('Opened port {0}.'.format(port))
 
     self._serial.flushInput()
@@ -137,23 +137,11 @@ class FingerprintScanner(pattern.Logger):
 
     self._device_data = self._get_data(16 + 4 + 4)
     self._serial.timeout = self._timeout
-
-  def _detect_baudrate(self):
-    self._serial.timeout = 0.5
-    for baudrate in (self._serial.baudrate, ) + self._serial.BAUDRATES:
-      if 9600 <= baudrate <= 115200:
-        self.logger.debug('Attempting {0}...'.format(baudrate))
-        self._serial.baudrate = baudrate
-        try:
-          self._send_command('Open', True)
-          return self._get_response()
-        except FingerprintScannerException:
-          pass
-
-    raise FingerprintScannerException('Unable to detect baudrate.')
+    self._change_baudrate(115200)
 
   def close(self):
-    self.change_baudrate(9600)
+    self.logger.info('Closing...')
+    self._change_baudrate(9600)
     try:
       self._send_command('Close')
       self._get_response()
@@ -163,19 +151,11 @@ class FingerprintScanner(pattern.Logger):
     self._serial.flushOutput()
     self._serial.close()
     self._serial = None
-
-  def UsbInternalCheck(self):
-    self._send_command('UsbInternalCheck')
-    self._get_response()
+    self.logger.info('Closed')
 
   def set_cmos_led(self, on=False):
     self._send_command('CmosLed', on)
     self._get_response()
-
-  def change_baudrate(self, baudrate):
-    self._send_command('ChangeBaudrate', baudrate)
-    self._get_response()
-    self._serial.baudrate = baudrate
 
   def get_enroll_count(self):
     self._send_command('GetEnrollCount')
@@ -215,20 +195,20 @@ class FingerprintScanner(pattern.Logger):
     self._send_command('Enroll3')
     self._get_response()
 
-  def wait_for_finger(self, timeout=None):
+  def wait_for_finger(self, to_press=True, timeout=None):
     if timeout is not None:
       timeout_secs = timeout.total_seconds()
       while True:
-        if self.is_finger_pressed():
-          return True
+        if self.is_finger_pressed() == to_press:
+          return to_press
         if timeout_secs <= 0:
-          return False
-        time.sleep(0.2)
+          return not to_press
+        time.sleep(0.2 if timeout_secs > 0.2 else timeout_secs)
         timeout_secs -= 0.2
     else:
-      while not self.is_finger_pressed():
+      while self.is_finger_pressed() != to_press:
         time.sleep(0.2)
-      return True
+      return to_press
 
   def is_finger_pressed(self):
     self._send_command('IsPressFinger')
@@ -248,9 +228,18 @@ class FingerprintScanner(pattern.Logger):
     self._get_response()
 
   def identify(self):
-    self.capture(best_image=False)
-    self._send_command('Identify')
-    return self._get_response()
+    """Identifies finger on scanner against stored enrollment.
+
+    Returns:
+      Position of enrollment if identified, otherwise -1.
+    """
+    try:
+      self.capture(best_image=False)
+      self._send_command('Identify')
+      return self._get_response()
+    except FingerprintScannerException as e:
+      self.logger.info('Exception: {0}'.format(e))
+      return -1
 
   def capture(self, best_image=False):
     # For enrollment use 'best_image = True'
@@ -271,6 +260,7 @@ class FingerprintScanner(pattern.Logger):
     Raises:
       FingerprintScannerException: if fails to capture image.
     """
+    self.capture(best_image=True)
     self._send_command('GetRawImage' if raw else 'GetImage')
     self._get_response()
 
@@ -385,12 +375,80 @@ class FingerprintScanner(pattern.Logger):
     packet = struct.unpack(self._DATA_STRUCT(data_len), packet)
     return packet[3]
 
+  def _detect_baudrate(self):
+    self._serial.timeout = 0.5
+    for baudrate in (self._serial.baudrate, ) + self._serial.BAUDRATES:
+      if 9600 <= baudrate <= 115200:
+        self.logger.debug('Attempting {0}...'.format(baudrate))
+        self._serial.baudrate = baudrate
+        try:
+          self._send_command('Open', True)
+          return self._get_response()
+        except FingerprintScannerException:
+          pass
+
+    raise FingerprintScannerException('Unable to detect baudrate.')
+
+  def _change_baudrate(self, baudrate):
+    self.logger.info('Changing baudrate to {0}...'.format(baudrate))
+    self._send_command('ChangeBaudrate', baudrate)
+    self._get_response()
+    self._serial.baudrate = baudrate
+
   def _packet_to_string(self, packet):
     return ' '.join([hex(x) for x in packet])
 
 
 class FingerprintScannerException(Exception):
   pass
+
+
+class FingerprintMonitor(pattern.Worker, pattern.EventEmitter):
+
+  def __init__(self, *args, **kwargs):
+    super(FingerprintMonitor, self).__init__(*args, **kwargs)
+    self._scanner = FingerprintScanner()
+    self._pressed = False
+    self.on('pressed', self._on_pressed)
+
+  def _on_start(self):
+    self._scanner.initialize()
+
+  def _on_run(self):
+    if self._pressed:
+      self._pressed = self._scanner.wait_for_finger(
+          to_press=False, timeout=datetime.timedelta(seconds=0))
+      if self._pressed:
+        time.sleep(0.5)
+      else:
+        self.logger.info('Finger released.')
+        self._scanner.set_cmos_led(False)
+        self.emit('released')
+    else:
+      self._scanner.set_cmos_led(True)
+      self._pressed = self._scanner.wait_for_finger(
+          to_press=True, timeout=datetime.timedelta(seconds=0))
+      if self._pressed:
+        self.logger.info('Finger pressed.')
+        self.emit('pressed')
+      else:
+        self._scanner.set_cmos_led(False)
+        time.sleep(1)
+
+  def _on_pressed(self):
+    self.logger.info('Identifying...')
+    pos = self._scanner.identify()
+    if pos >= 0:
+      self.logger.info('Fingerprint identified as {0}'.format(pos))
+      self.emit('identified', pos)
+    else:
+      self.logger.warn('Fingerprint unidentified.')
+      self.emit('unidentified')
+
+  def _on_stop(self):
+    self._scanner.set_cmos_led(False)
+    self._scanner.close()
+    self._scanner = None
 
 
 """
@@ -452,5 +510,9 @@ class FingerprintScannerException(Exception):
       return [self._get_response(), None]
     else:
       raise RuntimeError("Couldn't send packet")
+
+  def UsbInternalCheck(self):
+    self._send_command('UsbInternalCheck')
+    self._get_response()
 
 """

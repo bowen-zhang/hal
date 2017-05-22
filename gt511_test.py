@@ -7,45 +7,48 @@ from hal import gt511
 def enroll(scanner):
   position = input('Position to enroll: ')
   print 'Place finger on scanner now.'
+  scanner.set_cmos_led(True)
   scanner.wait_for_finger()
   print 'Enrolling...'
   if scanner.is_enrolled(position):
     scanner.delete_position(position)
   scanner.enroll(position)
+  scanner.set_cmos_led(False)
   print 'Done!'
 
 
 def identify(scanner):
   print 'Place finger on scanner now.'
+  scanner.set_cmos_led(True)
   scanner.wait_for_finger()
-  try:
-    pos = scanner.identify()
+  pos = scanner.identify()
+  if pos >= 0:
     print 'Identified as #{0}.'.format(pos)
-  except:
+  else:
     print 'Unknown'
+  scanner.set_cmos_led(False)
 
 
 def capture(scanner):
   print 'Place finger on scanner now.'
+  scanner.set_cmos_led(True)
   scanner.wait_for_finger()
   print 'Scanning...'
-  scanner.capture()
   img = scanner.get_image()
   img.save('1.png')
   print 'Saved image.'
+  scanner.set_cmos_led(False)
 
 
 def test_gt511():
   scanner = gt511.FingerprintScanner()
   scanner.initialize()
-  scanner.change_baudrate(115200)
 
   state = ''
   for i in range(20):
     state += '[x]' if scanner.is_enrolled(i) else '[ ]'
   print 'Enrollment: ' + state
   try:
-    scanner.set_cmos_led(True)
     while True:
       print 'Options:'
       print '  1. Enroll'
@@ -68,6 +71,18 @@ def test_gt511():
     scanner.close()
 
 
+def test_monitor():
+  monitor = gt511.FingerprintMonitor()
+  monitor.start()
+  print 'Waiting...'
+  try:
+    while True:
+      time.sleep(1)
+  finally:
+    monitor.stop()
+
+
 if __name__ == '__main__':
-  logging.basicConfig(level=logging.INFO)
+  logging.basicConfig(level=logging.DEBUG)
   test_gt511()
+  #test_monitor()
