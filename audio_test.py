@@ -3,7 +3,7 @@ import sys
 import time
 import wave
 
-from blackbox.devices import audio
+from hal import audio
 from common import audio as audio_util
 
 file = None

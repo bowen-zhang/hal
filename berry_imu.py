@@ -5,266 +5,274 @@ import math
 import smbus
 import time
 
-from blackbox.devices.LSM9DS0 import *
+from hal.LSM9DS0 import *
 from common import pattern
 from common import unit
 
 
 # return two bytes from data as a signed 16-bit value
 def _get_short(data, index):
-        return ctypes.c_short((data[index] << 8) + data[index + 1]).value
+  return ctypes.c_short((data[index] << 8) + data[index + 1]).value
+
 
 # return two bytes from data as an unsigned 16-bit value
 def _get_ushort(data, index):
-        return (data[index] << 8) + data[index + 1]
+  return (data[index] << 8) + data[index + 1]
 
 
 class _Axis(enum.Enum):
-    X = 0
-    Y = 1
-    Z = 2
+  X = 0
+  Y = 1
+  Z = 2
 
 
 class IMUBus(pattern.Singleton):
-    ACC_REG_LOW = [OUT_X_L_A, OUT_Y_L_A, OUT_Z_L_A]
-    ACC_REG_HIGH = [OUT_X_H_A, OUT_Y_H_A, OUT_Z_H_A]
-    MAG_REG_LOW = [OUT_X_L_M, OUT_Y_L_M, OUT_Z_L_M]
-    MAG_REG_HIGH = [OUT_X_H_M, OUT_Y_H_M, OUT_Z_H_M]
-    GYRO_REG_LOW = [OUT_X_L_G, OUT_Y_L_G, OUT_Z_L_G]
-    GYRO_REG_HIGH = [OUT_X_H_G, OUT_Y_H_G, OUT_Z_H_G]
+  ACC_REG_LOW = [OUT_X_L_A, OUT_Y_L_A, OUT_Z_L_A]
+  ACC_REG_HIGH = [OUT_X_H_A, OUT_Y_H_A, OUT_Z_H_A]
+  MAG_REG_LOW = [OUT_X_L_M, OUT_Y_L_M, OUT_Z_L_M]
+  MAG_REG_HIGH = [OUT_X_H_M, OUT_Y_H_M, OUT_Z_H_M]
+  GYRO_REG_LOW = [OUT_X_L_G, OUT_Y_L_G, OUT_Z_L_G]
+  GYRO_REG_HIGH = [OUT_X_H_G, OUT_Y_H_G, OUT_Z_H_G]
 
-    def __init__(self, *args, **kwargs):
-        super(IMUBus, self).__init__(*args, **kwargs)
-        self._bus = smbus.SMBus(1)
-        self.write_acc(CTRL_REG1_XM, 0b01100111) #z,y,x axis enabled, continuos update,  100Hz data rate
-        self.write_acc(CTRL_REG2_XM, 0b00100000) #+/- 16G full scale
+  def __init__(self, *args, **kwargs):
+    super(IMUBus, self).__init__(*args, **kwargs)
+    self._bus = smbus.SMBus(1)
+    self.write_acc(
+        CTRL_REG1_XM,
+        0b01100111)  #z,y,x axis enabled, continuos update,  100Hz data rate
+    self.write_acc(CTRL_REG2_XM, 0b00100000)  #+/- 16G full scale
 
-        #initialise the magnetometer
-        self.write_mag(CTRL_REG5_XM, 0b11110000) #Temp enable, M data rate = 50Hz
-        self.write_mag(CTRL_REG6_XM, 0b01100000) #+/-12gauss
-        self.write_mag(CTRL_REG7_XM, 0b00000000) #Continuous-conversion mode
+    #initialise the magnetometer
+    self.write_mag(CTRL_REG5_XM, 0b11110000)  #Temp enable, M data rate = 50Hz
+    self.write_mag(CTRL_REG6_XM, 0b01100000)  #+/-12gauss
+    self.write_mag(CTRL_REG7_XM, 0b00000000)  #Continuous-conversion mode
 
-        #initialise the gyroscope
-        self.write_gyro(CTRL_REG1_G, 0b00001111) #Normal power mode, all axes enabled
-        self.write_gyro(CTRL_REG4_G, 0b00110000) #Continuos update, 2000 dps full scale
+    #initialise the gyroscope
+    self.write_gyro(CTRL_REG1_G,
+                    0b00001111)  #Normal power mode, all axes enabled
+    self.write_gyro(CTRL_REG4_G,
+                    0b00110000)  #Continuos update, 2000 dps full scale
 
-    def write_env(self, register, value):
-        self._bus.write_byte_data(ENV_ADDRESS, register, value)
+  def write_env(self, register, value):
+    self._bus.write_byte_data(ENV_ADDRESS, register, value)
 
-    def read_env(self, register, value):
-        return self._bus.read_i2c_block_data(ENV_ADDRESS, register, value)
+  def read_env(self, register, value):
+    return self._bus.read_i2c_block_data(ENV_ADDRESS, register, value)
 
-    def write_acc(self, register, value):
-        self._bus.write_byte_data(ACC_ADDRESS, register, value)
+  def write_acc(self, register, value):
+    self._bus.write_byte_data(ACC_ADDRESS, register, value)
 
-    def read_acc(self, axis):
-        return self._read(IMUBus.ACC_REG_LOW[axis.value], IMUBus.ACC_REG_HIGH[axis.value])
+  def read_acc(self, axis):
+    return self._read(IMUBus.ACC_REG_LOW[axis.value],
+                      IMUBus.ACC_REG_HIGH[axis.value])
 
-    def write_mag(self, register,value):
-        self._bus.write_byte_data(MAG_ADDRESS, register, value)
+  def write_mag(self, register, value):
+    self._bus.write_byte_data(MAG_ADDRESS, register, value)
 
-    def read_mag(self, axis):
-        return self._read(IMUBus.MAG_REG_LOW[axis.value], IMUBus.MAG_REG_HIGH[axis.value])
+  def read_mag(self, axis):
+    return self._read(IMUBus.MAG_REG_LOW[axis.value],
+                      IMUBus.MAG_REG_HIGH[axis.value])
 
-    def write_gyro(self, register,value):
-        self._bus.write_byte_data(GYR_ADDRESS, register, value)
+  def write_gyro(self, register, value):
+    self._bus.write_byte_data(GYR_ADDRESS, register, value)
 
-    def read_gyro(self, axis):
-        return self._read(IMUBus.GYRO_REG_LOW[axis.value], IMUBus.GYRO_REG_HIGH[axis.value])
+  def read_gyro(self, axis):
+    return self._read(IMUBus.GYRO_REG_LOW[axis.value],
+                      IMUBus.GYRO_REG_HIGH[axis.value])
 
-    def _read(self, low, high):
-        acc_l = self._bus.read_byte_data(ACC_ADDRESS, low)
-        acc_h = self._bus.read_byte_data(ACC_ADDRESS, high)
-        acc_combined = (acc_l | acc_h <<8)
-        return acc_combined  if acc_combined < 32768 else acc_combined - 65536
+  def _read(self, low, high):
+    acc_l = self._bus.read_byte_data(ACC_ADDRESS, low)
+    acc_h = self._bus.read_byte_data(ACC_ADDRESS, high)
+    acc_combined = (acc_l | acc_h << 8)
+    return acc_combined if acc_combined < 32768 else acc_combined - 65536
 
 
 class Load(object):
 
-    def __init__(self):
-        self._bus = IMUBus.get_instance()
+  def __init__(self):
+    self._bus = IMUBus.get_instance()
 
-    @property
-    def x(self):
-        value = self._bus.read_acc(_Axis.X)
-        return value * 0.732 / 1000
+  @property
+  def x(self):
+    value = self._bus.read_acc(_Axis.X)
+    return value * 0.732 / 1000
 
-    @property
-    def y(self):
-        value = self._bus.read_acc(_Axis.Y)
-        return value * 0.732 / 1000
+  @property
+  def y(self):
+    value = self._bus.read_acc(_Axis.Y)
+    return value * 0.732 / 1000
 
-    @property
-    def z(self):
-        value = self._bus.read_acc(_Axis.Z)
-        return value * 0.732 / 1000
+  @property
+  def z(self):
+    value = self._bus.read_acc(_Axis.Z)
+    return value * 0.732 / 1000
 
 
 class Environment(object):
 
-    _OVERSAMPLING = 3
+  _OVERSAMPLING = 3
 
-    def __init__(self):
-        self._bus = IMUBus.get_instance()
+  def __init__(self):
+    self._bus = IMUBus.get_instance()
 
-        # Read whole calibration EEPROM data
-        cal = self._bus.read_env(0xAA, 22)
-        # Convert byte data to word values
-        self._ac1 = _get_short(cal, 0)
-        self._ac2 = _get_short(cal, 2)
-        self._ac3 = _get_short(cal, 4)
-        self._ac4 = _get_ushort(cal, 6)
-        self._ac5 = _get_ushort(cal, 8)
-        self._ac6 = _get_ushort(cal, 10)
-        self._b1 = _get_short(cal, 12)
-        self._b2 = _get_short(cal, 14)
-        self._mb = _get_short(cal, 16)
-        self._mc = _get_short(cal, 18)
-        self._md = _get_short(cal, 20)
+    # Read whole calibration EEPROM data
+    cal = self._bus.read_env(0xAA, 22)
+    # Convert byte data to word values
+    self._ac1 = _get_short(cal, 0)
+    self._ac2 = _get_short(cal, 2)
+    self._ac3 = _get_short(cal, 4)
+    self._ac4 = _get_ushort(cal, 6)
+    self._ac5 = _get_ushort(cal, 8)
+    self._ac6 = _get_ushort(cal, 10)
+    self._b1 = _get_short(cal, 12)
+    self._b2 = _get_short(cal, 14)
+    self._mb = _get_short(cal, 16)
+    self._mc = _get_short(cal, 18)
+    self._md = _get_short(cal, 20)
 
-    @property
-    def temperature(self):
-        self._update()
-        return self._temperature
+  @property
+  def temperature(self):
+    self._update()
+    return self._temperature
 
-    @property
-    def pressure(self):
-        self._update()
-        return self._pressure
+  @property
+  def pressure(self):
+    self._update()
+    return self._pressure
 
-    @property
-    def humidity(self):
-        return None
+  @property
+  def humidity(self):
+    return None
 
-    @property
-    def temperature_pressure(self):
-        self._update()
-        return (self._temperature, self._pressure)
+  @property
+  def temperature_pressure(self):
+    self._update()
+    return (self._temperature, self._pressure)
 
-    def _update(self):
-        # Get raw temperature
-        self._bus.write_env(0xF4, 0x2E)
-        time.sleep(0.005)
-        (msb, lsb) = self._bus.read_env(0xF6, 2)
-        ut = (msb << 8) + lsb
+  def _update(self):
+    # Get raw temperature
+    self._bus.write_env(0xF4, 0x2E)
+    time.sleep(0.005)
+    (msb, lsb) = self._bus.read_env(0xF6, 2)
+    ut = (msb << 8) + lsb
 
-        # Calculating temperature
-        x1 = ((ut - self._ac6) * self._ac5) >> 15
-        x2 = (self._mc << 11) / (x1 + self._md)
-        b5 = x1 + x2
-        t = (b5 + 8) >> 4
+    # Calculating temperature
+    x1 = ((ut - self._ac6) * self._ac5) >> 15
+    x2 = (self._mc << 11) / (x1 + self._md)
+    b5 = x1 + x2
+    t = (b5 + 8) >> 4
 
-        # Get raw pressure
-        self._bus.write_env(0xF4, 0x34 + (Environment._OVERSAMPLING << 6))
-        time.sleep(0.04)
-        (msb, lsb, xsb) = self._bus.read_env(0xF6, 3)
-        up = ((msb << 16) + (lsb << 8) + xsb) >> (8 - Environment._OVERSAMPLING)
+    # Get raw pressure
+    self._bus.write_env(0xF4, 0x34 + (Environment._OVERSAMPLING << 6))
+    time.sleep(0.04)
+    (msb, lsb, xsb) = self._bus.read_env(0xF6, 3)
+    up = ((msb << 16) + (lsb << 8) + xsb) >> (8 - Environment._OVERSAMPLING)
 
-        # Calculating pressure
-        b6 = b5 - 4000
-        b62 = b6 * b6 >> 12
-        x1 = (self._b2 * b62) >> 11
-        x2 = self._ac2 * b6 >> 11
-        x3 = x1 + x2
-        b3 = (((self._ac1 * 4 + x3) << Environment._OVERSAMPLING) + 2) >> 2
+    # Calculating pressure
+    b6 = b5 - 4000
+    b62 = b6 * b6 >> 12
+    x1 = (self._b2 * b62) >> 11
+    x2 = self._ac2 * b6 >> 11
+    x3 = x1 + x2
+    b3 = (((self._ac1 * 4 + x3) << Environment._OVERSAMPLING) + 2) >> 2
 
-        x1 = self._ac3 * b6 >> 13
-        x2 = (self._b1 * b62) >> 16
-        x3 = ((x1 + x2) + 2) >> 2
-        b4 = (self._ac4 * (x3 + 32768)) >> 15
-        b7 = (up - b3) * (50000 >> Environment._OVERSAMPLING)
+    x1 = self._ac3 * b6 >> 13
+    x2 = (self._b1 * b62) >> 16
+    x3 = ((x1 + x2) + 2) >> 2
+    b4 = (self._ac4 * (x3 + 32768)) >> 15
+    b7 = (up - b3) * (50000 >> Environment._OVERSAMPLING)
 
-        p = (b7 * 2) / b4
-        #p = (b7 / b4) * 2
+    p = (b7 * 2) / b4
+    #p = (b7 / b4) * 2
 
-        x1 = (p >> 8) * (p >> 8)
-        x1 = (x1 * 3038) >> 16
-        x2 = (-7357 * p) >> 16
-        p = p + ((x1 + x2 + 3791) >> 4)
+    x1 = (p >> 8) * (p >> 8)
+    x1 = (x1 * 3038) >> 16
+    x2 = (-7357 * p) >> 16
+    p = p + ((x1 + x2 + 3791) >> 4)
 
-        self._temperature = unit.Temperature(t / 10.0, unit.Temperature.CELSIUS)
-        self._pressure = unit.Pressure(p, unit.Pressure.PA)
+    self._temperature = unit.Temperature(t / 10.0, unit.Temperature.CELSIUS)
+    self._pressure = unit.Pressure(p, unit.Pressure.PA)
 
 
 class Attitude(object):
 
-    def __init__(self):
-        self._bus = IMUBus.get_instance()
+  def __init__(self):
+    self._bus = IMUBus.get_instance()
 
-        self._gyroXangle = 0.0
-        self._gyroYangle = 0.0
-        self._gyroZangle = 0.0
-        self._CFangleX = 0.0
-        self._CFangleY = 0.0
+    self._gyroXangle = 0.0
+    self._gyroYangle = 0.0
+    self._gyroZangle = 0.0
+    self._CFangleX = 0.0
+    self._CFangleY = 0.0
 
-    @property
-    def pitch(self):
-        #Read the accelerometer,gyroscope and magnetometer values
-        ACCx = self._bus.read_acc(_Axis.X)
-        ACCy = self._bus.read_acc(_Axis.Y)
-        ACCz = self._bus.read_acc(_Axis.Z)
+  @property
+  def pitch(self):
+    #Read the accelerometer,gyroscope and magnetometer values
+    ACCx = self._bus.read_acc(_Axis.X)
+    ACCy = self._bus.read_acc(_Axis.Y)
+    ACCz = self._bus.read_acc(_Axis.Z)
 
-        #Normalize accelerometer raw values.
-        accXnorm = ACCx/math.sqrt(ACCx * ACCx + ACCy * ACCy + ACCz * ACCz)
+    #Normalize accelerometer raw values.
+    accXnorm = ACCx / math.sqrt(ACCx * ACCx + ACCy * ACCy + ACCz * ACCz)
 
-        ####################################################################
-        ###################Calculate pitch and roll#########################
-        ####################################################################
-        #Use these two lines when the IMU is up the right way. Skull logo is facing down
-        pitch = math.asin(accXnorm)
-        #
-        #Us these four lines when the IMU is upside down. Skull logo is facing up
-        #accXnorm = -accXnorm               #flip Xnorm as the IMU is upside down
-        #pitch = math.asin(accXnorm)
-        #
-        ############################ END ##################################
-        return unit.Angle(pitch, unit.Angle.RADIAN, unit.Angle.RELATIVE_RANGE)
+    ####################################################################
+    ###################Calculate pitch and roll#########################
+    ####################################################################
+    #Use these two lines when the IMU is up the right way. Skull logo is facing down
+    pitch = math.asin(accXnorm)
+    #
+    #Us these four lines when the IMU is upside down. Skull logo is facing up
+    #accXnorm = -accXnorm               #flip Xnorm as the IMU is upside down
+    #pitch = math.asin(accXnorm)
+    #
+    ############################ END ##################################
+    return unit.Angle(pitch, unit.Angle.RADIAN, unit.Angle.RELATIVE_RANGE)
 
-    @property
-    def roll(self):
-        #Read the accelerometer,gyroscope and magnetometer values
-        ACCx = self._bus.read_acc(_Axis.X)
-        ACCy = self._bus.read_acc(_Axis.Y)
-        ACCz = self._bus.read_acc(_Axis.Z)
+  @property
+  def roll(self):
+    #Read the accelerometer,gyroscope and magnetometer values
+    ACCx = self._bus.read_acc(_Axis.X)
+    ACCy = self._bus.read_acc(_Axis.Y)
+    ACCz = self._bus.read_acc(_Axis.Z)
 
-        #Normalize accelerometer raw values.
-        accXnorm = ACCx/math.sqrt(ACCx * ACCx + ACCy * ACCy + ACCz * ACCz)
-        accYnorm = ACCy/math.sqrt(ACCx * ACCx + ACCy * ACCy + ACCz * ACCz)
+    #Normalize accelerometer raw values.
+    accXnorm = ACCx / math.sqrt(ACCx * ACCx + ACCy * ACCy + ACCz * ACCz)
+    accYnorm = ACCy / math.sqrt(ACCx * ACCx + ACCy * ACCy + ACCz * ACCz)
 
-        ####################################################################
-        ###################Calculate pitch and roll#########################
-        ####################################################################
-        #Use these two lines when the IMU is up the right way. Skull logo is facing down
-        pitch = math.asin(accXnorm)
-        roll = -math.asin(accYnorm/math.cos(pitch))
-        #
-        #Us these four lines when the IMU is upside down. Skull logo is facing up
-        #accXnorm = -accXnorm               #flip Xnorm as the IMU is upside down
-        #accYnorm = -accYnorm               #flip Ynorm as the IMU is upside down
-        #pitch = math.asin(accXnorm)
-        #roll = math.asin(accYnorm/math.cos(pitch))
-        #
-        ############################ END ##################################
-        return unit.Angle(roll, unit.Angle.RADIAN, unit.Angle.RELATIVE_RANGE)
+    ####################################################################
+    ###################Calculate pitch and roll#########################
+    ####################################################################
+    #Use these two lines when the IMU is up the right way. Skull logo is facing down
+    pitch = math.asin(accXnorm)
+    roll = -math.asin(accYnorm / math.cos(pitch))
+    #
+    #Us these four lines when the IMU is upside down. Skull logo is facing up
+    #accXnorm = -accXnorm               #flip Xnorm as the IMU is upside down
+    #accYnorm = -accYnorm               #flip Ynorm as the IMU is upside down
+    #pitch = math.asin(accXnorm)
+    #roll = math.asin(accYnorm/math.cos(pitch))
+    #
+    ############################ END ##################################
+    return unit.Angle(roll, unit.Angle.RADIAN, unit.Angle.RELATIVE_RANGE)
 
-    @property
-    def heading(self):
-        MAGx = self._bus.read_mag(_Axis.X)
-        MAGy = self._bus.read_mag(_Axis.Y)
-        ####################################################################
-        ############################MAG direction ##########################
-        ####################################################################
-        #If IMU is upside down, then use this line.  It isnt needed if the
-        # IMU is the correct way up
-        #MAGy = -MAGy
-        #
-        ############################ END ##################################
+  @property
+  def heading(self):
+    MAGx = self._bus.read_mag(_Axis.X)
+    MAGy = self._bus.read_mag(_Axis.Y)
+    ####################################################################
+    ############################MAG direction ##########################
+    ####################################################################
+    #If IMU is upside down, then use this line.  It isnt needed if the
+    # IMU is the correct way up
+    #MAGy = -MAGy
+    #
+    ############################ END ##################################
 
-        #Calculate heading
-        heading = math.atan2(MAGy,MAGx)
-        return unit.Angle(heading, unit.Angle.RADIAN, unit.Angle.HEADING_RANGE)
+    #Calculate heading
+    heading = math.atan2(MAGy, MAGx)
+    return unit.Angle(heading, unit.Angle.RADIAN, unit.Angle.HEADING_RANGE)
 
-    '''
+  '''
 RAD_TO_DEG = 57.29578
 M_PI = 3.14159265358979323846
 G_GAIN = 0.070  # [deg/s/LSB]  If you change the dps for gyro, you need to update this value accordingly

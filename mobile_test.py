@@ -1,7 +1,7 @@
 import logging
 import subprocess
 
-from blackbox.devices import mobile
+from hal import mobile
 
 
 def test_mobile():
