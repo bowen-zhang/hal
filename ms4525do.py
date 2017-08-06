@@ -6,27 +6,30 @@ import threading
 
 from common import data_filters
 from common import pattern
+from common import counters
 from common import unit
 
 
-class AirspeedSensor(pattern.Worker, pattern.EventEmitter):
+class AirspeedSensor(pattern.Worker, pattern.EventEmitter, pattern.Singleton):
   _AIRSPEED_WINDOW_SIZE = 1000
   _TEMPERATURE_WINDOW_SIZE = 100
   _ADDRESS = 0x28
   _PASCAL_PER_PSI = 6894.76
   _MPH_PER_MPS = 2.3694
-  _MAX_PRESSURE = 1 * _PASCAL_PER_PSI   # 1 psi
+  _MAX_PRESSURE = 1 * _PASCAL_PER_PSI  # 1 psi
   _MIN_PRESSURE = -1 * _PASCAL_PER_PSI  # -1 psi
-  _PRESSURE_BITS = 14 # 14 bits, 0-16383
-  _MAX_TEMPERATURE = 150 # 150 C
-  _MIN_TEMPERATURE = -50 # -50 C
-  _TEMPERATURE_BITS = 11 # 11 bits, 0-2047
+  _PRESSURE_BITS = 14  # 14 bits, 0-16383
+  _MAX_TEMPERATURE = 150  # 150 C
+  _MIN_TEMPERATURE = -50  # -50 C
+  _TEMPERATURE_BITS = 11  # 11 bits, 0-2047
 
   def __init__(self, *args, **kwargs):
     super(AirspeedSensor, self).__init__(*args, **kwargs)
     self._bus = None
     self._pressure = data_filters.SmoothValue(self._AIRSPEED_WINDOW_SIZE)
     self._temperature = data_filters.SmoothValue(self._TEMPERATURE_WINDOW_SIZE)
+    self._fetch_latency = counters.Aggregator(1000)
+    self._total_latency = counters.Aggregator(1000)
 
   @property
   def raw_pressure(self):
@@ -52,6 +55,7 @@ class AirspeedSensor(pattern.Worker, pattern.EventEmitter):
     value *= self._MAX_PRESSURE - self._MIN_PRESSURE
     value /= 0.8 * (2**self._PRESSURE_BITS - 1)
     value += self._MIN_PRESSURE
+    value = abs(value)
     return unit.Pressure(value, unit.Pressure.PA)
 
   @property
@@ -66,9 +70,8 @@ class AirspeedSensor(pattern.Worker, pattern.EventEmitter):
       velocity [m/s]
 
     """
-    p = self.pressure
+    p = self.pressure.pa
     v = math.sqrt(abs(p) / 0.5 / 1.225) * (1 if p > 0 else -1)
-    v *= self._MPH_PER_MPS
     return unit.Speed(unit.Length(v, unit.Length.METER), unit.ONE_SECOND)
 
   @property
@@ -90,13 +93,26 @@ class AirspeedSensor(pattern.Worker, pattern.EventEmitter):
     value += self._MIN_TEMPERATURE
     return unit.Temperature(value, unit.Temperature.CELSIUS)
 
+  @property
+  def fetch_latency(self):
+    """Gets average latency to read a value from sensor."""
+    return self._fetch_latency.average()
+
+  @property
+  def total_latency(self):
+    """Gets total latency for a complete cycle."""
+    return self._total_latency.average()
+
   def _on_start(self):
     self._pressure.reset()
     self._temperature.reset()
     self._bus = smbus.SMBus(1)
 
   def _on_run(self):
+    t0 = time.time()
     data = self._bus.read_i2c_block_data(self._ADDRESS, 4)
+    t1 = time.time()
+
     # status == b00: normal operation and a good data packet
     # status == b10: stale data that has been already fetched
     status = (data[0] >> 6) & 0x03
@@ -106,3 +122,7 @@ class AirspeedSensor(pattern.Worker, pattern.EventEmitter):
       self._pressure.set(raw_pressure)
       self._temperature.set(raw_temperature)
       self.emit('data', self)
+
+    t2 = time.time()
+    self._fetch_latency.add(t1 - t0)
+    self._total_latency.add(t2 - t0)

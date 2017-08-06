@@ -3,22 +3,42 @@ import os
 import sys
 import time
 
+from common import console
 from hal import ms4525do
 
-last_update = None
+dash = console.Dashboard.get_instance()
+raw_pressure_field = console.LabeledTextField(
+    dash, x=1, y=1, max_width=30, label='Raw Pressure: ', fmt='{0:.1f} count')
+pressure_field = console.LabeledTextField(
+    dash, x=1, y=2, max_width=30, label='Pressure: ', fmt='{0:.1f} Pa')
+airspeed_field = console.LabeledTextField(
+    dash, x=1, y=3, max_width=30, label='Airspeed: ', fmt='{0:.0f} mph')
+temperature_field = console.LabeledTextField(
+    dash, x=1, y=4, max_width=30, label='Temperature: ', fmt='{0:.1f} C')
+fetch_latency_field = console.LabeledTextField(
+    dash, x=31, y=1, max_width=30, label='Fetch Latency: ', fmt='{0:.4f} sec')
+total_latency_field = console.LabeledTextField(
+    dash, x=31, y=2, max_width=30, label='Total Latency: ', fmt='{0:.4f} sec')
+
+last_update = time.time()
+
 
 def on_data(sensor):
-  if not last_update or time.time() - last_update > 0.1:
-    sys.stdout.write('\x1b7\x1b[1;1fRaw Pressure = %s\t\x1b8' % sensor.raw_pressure)
-    sys.stdout.write('\x1b7\x1b[2;1fPressure = {0:.1f} Pa   \x1b8'.format(sensor.pressure.pa))
-    sys.stdout.write('\x1b7\x1b[3;1fAirspeed = {0:.0f} mph   \x1b8'.format(sensor.airspeed.mph))
-    sys.stdout.write('\x1b7\x1b[4;1fTemperature = {0:.1f} C   \x1b8'.format(sensor.temperature.c))
-    sys.stdout.write('\x1b7\x1b[5;1f%s\t\x1b8' % time.time())
-    sys.stdout.flush()
+  global last_update
+  if time.time() - last_update > 0.1:
+    dash.start_update()
+    raw_pressure_field.set(sensor.raw_pressure)
+    pressure_field.set(sensor.pressure.pa)
+    airspeed_field.set(sensor.airspeed.mph)
+    temperature_field.set(sensor.temperature.c)
+    fetch_latency_field.set(sensor.fetch_latency)
+    total_latency_field.set(sensor.total_latency)
+    dash.stop_update()
+
     last_update = time.time()
 
+
 def test():
-  os.system('clear')
   sensor = ms4525do.AirspeedSensor()
   sensor.start()
   sensor.on('data', on_data)
@@ -28,6 +48,7 @@ def test():
       time.sleep(1)
   finally:
     sensor.stop()
+
 
 if __name__ == '__main__':
   logging.basicConfig()
