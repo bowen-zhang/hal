@@ -7,6 +7,9 @@ from RPi import GPIO
 
 from common import pattern
 
+DATA_PIN = 18
+SCK_PIN = 23
+
 
 class SHT1xError(Exception):
   pass
@@ -71,9 +74,9 @@ class SHT1x(pattern.Logger):
   VDD = {'5V': 5, '4V': 4, '3.5V': 3.5, '3V': 3, '2.5V': 2.5}
 
   def __init__(self,
-               data_pin,
-               sck_pin,
-               gpio_mode=GPIO.BOARD,
+               data_pin=DATA_PIN,
+               sck_pin=SCK_PIN,
+               gpio_mode=GPIO.BCM,
                vdd='3.5V',
                resolution='High',
                heater=False,
@@ -255,7 +258,7 @@ class SHT1x(pattern.Logger):
     self.dew_point = round(tn * (log_humidity + ew) / m - (log_humidity + ew),
                            2)
 
-    self.logger.info('Dew Point: {0}*C'.format(self.dew_point))
+    #self.logger.info('Dew Point: {0}*C'.format(self.dew_point))
     return self.dew_point
 
   def _send_command(self, measurement=True):

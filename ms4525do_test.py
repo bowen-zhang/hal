@@ -8,17 +8,17 @@ from hal import ms4525do
 
 dash = console.Dashboard.get_instance()
 raw_pressure_field = console.LabeledTextField(
-    dash, x=1, y=1, max_width=30, label='Raw Pressure: ', fmt='{0:.1f} count')
+    x=1, y=1, max_width=30, label='Raw Pressure: ', fmt='{0:.1f} count')
 pressure_field = console.LabeledTextField(
-    dash, x=1, y=2, max_width=30, label='Pressure: ', fmt='{0:.1f} Pa')
+    x=1, y=2, max_width=30, label='Pressure: ', fmt='{0:.1f} Pa')
 airspeed_field = console.LabeledTextField(
-    dash, x=1, y=3, max_width=30, label='Airspeed: ', fmt='{0:.0f} mph')
+    x=1, y=3, max_width=30, label='Airspeed: ', fmt='{0:.0f} mph')
 temperature_field = console.LabeledTextField(
-    dash, x=1, y=4, max_width=30, label='Temperature: ', fmt='{0:.1f} C')
+    x=1, y=4, max_width=30, label='Temperature: ', fmt='{0:.1f} C')
 fetch_latency_field = console.LabeledTextField(
-    dash, x=31, y=1, max_width=30, label='Fetch Latency: ', fmt='{0:.4f} sec')
+    x=31, y=1, max_width=30, label='Fetch Latency: ', fmt='{0:.4f} sec')
 total_latency_field = console.LabeledTextField(
-    dash, x=31, y=2, max_width=30, label='Total Latency: ', fmt='{0:.4f} sec')
+    x=31, y=2, max_width=30, label='Total Latency: ', fmt='{0:.4f} sec')
 
 last_update = time.time()
 
