@@ -9,14 +9,16 @@ from PIL import Image
 from PIL import ImageDraw
 
 from common import pattern
+from hal import util
 
 
 class Display(pattern.Singleton):
+  _ADDRESS = 0x3C
 
   def __init__(self, *args, **kwargs):
     super(Display, self).__init__(*args, **kwargs)
 
-    self._serial = serial.i2c(port=1, address=0x3C)
+    self._serial = serial.i2c(port=1, address=Display._ADDRESS)
     self._device = device.ssd1306(
         self._serial, width=128, height=64, rotate=0, mode='RGB')
     self._image = Image.new(self._device.mode, self._device.size)
@@ -27,6 +29,10 @@ class Display(pattern.Singleton):
     self._font = ImageFont.truetype(font_path, 11)
 
     self._lock = threading.Lock()
+
+  @staticmethod
+  def is_available():
+    return util.is_i2c_available(Display._ADDRESS)
 
   def clear(self, x0=0, y0=0, x1=127, y1=63):
     self._lock.acquire()

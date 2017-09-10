@@ -3,6 +3,7 @@ import pyaudio
 import re
 import wave
 
+from common import audio as audio_util
 from common import pattern
 
 
@@ -41,6 +42,9 @@ class Audio(pattern.Worker, pattern.EventEmitter):
   def _on_run(self):
     data = self._stream.read(self._buffer_size)
     self.emit('sample', self, data)
+    if self.emittable('spectrum'):
+      spectrum = audio_util.create_power_spectrum(data)
+      self.emit('spectrum', self, spectrum)
 
   def _on_stop(self):
     self._stream.stop_stream()

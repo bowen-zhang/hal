@@ -5,7 +5,7 @@ import time
 from hal import camera
 from common import clocks
 
-c = camera.Camera(clock=clocks.SystemClock())
+c = camera.Camera(clock=clocks.SystemClock(), vflip=True)
 
 
 def terminate(signal, frame):
@@ -25,6 +25,11 @@ def test():
   c.close()
 
 
+def test_photo_capture():
+  c.capture('image1.jpg')
+  c.close()
+
+
 if __name__ == '__main__':
   signal.signal(signal.SIGINT, terminate)
-  test()
+  test_photo_capture()
