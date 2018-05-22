@@ -1,23 +1,32 @@
 import datetime
 import flask
 import io
+import picamera
 import time
 
 from common import pattern
+from common import clocks
 
 
 class Camera(pattern.Closable):
-
-  def __init__(self, clock, hflip=False, vflip=False, *args, **kwargs):
+  def __init__(self,
+               clock=clocks.SystemClock(),
+               title=None,
+               hflip=False,
+               vflip=False,
+               rotation=0,
+               *args,
+               **kwargs):
     super(Camera, self).__init__(self, *args, **kwargs)
 
     self._clock = clock
-    self._title = 'Forward'
+    self._title = title
     self._recording = False
 
     self._camera = picamera.PiCamera()
     self._camera.hflip = hflip
     self._camera.vflip = vflip
+    self._camera.rotation = rotation
     self._camera.resolution = (1920, 1080)
     self._camera.framerate = 15
     self._camera.annotate_text_size = 20
@@ -45,7 +54,6 @@ class Camera(pattern.Closable):
 
 
 class Recorder(pattern.Worker):
-
   def __init__(self, camera, file_path='.', *args, **kwargs):
     """
     Args:
