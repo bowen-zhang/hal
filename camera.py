@@ -50,7 +50,6 @@ class Camera(pattern.Closable):
     if self._camera:
       self._camera.close()
       self._camera = None
-    super(Camera, self).close()
 
 
 class Recorder(pattern.Worker):
