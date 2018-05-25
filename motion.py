@@ -5,7 +5,8 @@ from RPi import GPIO
 from common import pattern
 
 
-class PIRMotionSensor(pattern.EventEmitter, pattern.Closable, pattern.Logger):
+class PIRMotionSensor(pattern.EventEmitter, pattern.Closable, pattern.Logger,
+                      pattern.Startable, pattern.Stopable):
 
   _NO_MOTION_DELAY = 8  # sec
 
@@ -48,12 +49,12 @@ class PIRMotionSensor(pattern.EventEmitter, pattern.Closable, pattern.Logger):
                                     self._motion_stopped)
       self._timer.start()
 
-    def _motion_started(self):
-      if not self._in_motion:
-        self._in_motion = True
-        self.emit('motion start')
+  def _motion_started(self):
+    if not self._in_motion:
+      self._in_motion = True
+      self.emit('motion start')
 
-    def _motion_stopped(self):
-      if self._in_motion:
-        self._in_motion = False
-        self.emit('motion stop')
+  def _motion_stopped(self):
+    if self._in_motion:
+      self._in_motion = False
+      self.emit('motion stop')
