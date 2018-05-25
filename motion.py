@@ -16,20 +16,28 @@ class PIRMotionSensor(pattern.EventEmitter, pattern.Closable, pattern.Logger,
     self._pin = pin
     self._in_motion = False
     self._timer = None
-
-    GPIO.setmode(GPIO.BCM)
-    GPIO.setup(self._pin, GPIO.IN)
+    self._started = False
 
   @property
   def in_motion(self):
     return self._in_motion
 
   def start(self):
+    if self._started:
+      return
+
+    GPIO.setmode(GPIO.BCM)
+    GPIO.setup(self._pin, GPIO.IN)
     GPIO.add_event_detect(self._pin, GPIO.BOTH, callback=self._triggered)
+    self._started = True
 
   def stop(self):
+    if not self._started:
+      return
+
     GPIO.remove_event_detect(self._pin)
     GPIO.cleanup()
+    self._started = False
 
   def close(self):
     self.stop()
