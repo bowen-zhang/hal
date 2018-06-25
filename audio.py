@@ -19,7 +19,8 @@ class Audio(pattern.Worker, pattern.EventEmitter):
   FORMAT = pyaudio.paInt16
 
   def __init__(self, name, sample_rate, *args, **kwargs):
-    super(Audio, self).__init__(*args, **kwargs)
+    super(Audio, self).__init__(
+        worker_name='Audio - {0}'.format(name), *args, **kwargs)
 
     self._audio = None
     self._stream = None
@@ -65,7 +66,8 @@ class AudioFromFile(pattern.Worker, pattern.EventEmitter):
   _ONE_SECOND = datetime.timedelta(seconds=1)
 
   def __init__(self, path, clock, *args, **kwargs):
-    super(AudioFromFile, self).__init__(*args, **kwargs)
+    super(AudioFromFile, self).__init__(
+        worker_name='AudioFromFile', *args, **kwargs)
     self._path = path
     self._clock = clock
     self._timestamp = datetime.timedelta(seconds=0)
@@ -78,7 +80,8 @@ class AudioFromFile(pattern.Worker, pattern.EventEmitter):
 
   def _on_start(self):
     self._file = wave.open(self._path, 'rb')
-    self._frames_per_sec = self._file.getnchannels() * self._file.getframerate()
+    self._frames_per_sec = self._file.getnchannels() * self._file.getframerate(
+    )
     self._nframes = self._file.getnframes()
     self._start_time = self._clock.utc
     self._timestamp = datetime.timedelta(seconds=0)

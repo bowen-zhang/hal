@@ -4,11 +4,12 @@ import io
 import picamera
 import time
 
-from common import pattern
 from common import clocks
+from common import pattern
 
 
 class Camera(pattern.Closable):
+
   def __init__(self,
                clock=clocks.SystemClock(),
                title=None,
@@ -53,13 +54,15 @@ class Camera(pattern.Closable):
 
 
 class Recorder(pattern.Worker):
+
   def __init__(self, camera, file_path='.', *args, **kwargs):
     """
     Args:
       camera: a Camera instance.
       file_path: directory to save recordings.
     """
-    super(Recorder, self).__init__(self, *args, **kwargs)
+    super(Recorder, self).__init__(
+        self, worker='CameraRecorder', *args, **kwargs)
 
     self._camera = camera
     self._file_path = file_path
@@ -93,7 +96,8 @@ class Streamer(pattern.Worker):
                frame_rate=2,
                *args,
                **kwargs):
-    super(Streamer, self).__init__(*args, **kwargs)
+    super(Streamer, self).__init__(
+        worker_name='CameraStreamer', *args, **kwargs)
 
     web.add_url_rule('/video', view_func=self._on_video_request)
     self._width = width

@@ -3,8 +3,11 @@ import math
 import threading
 import time
 
+from common import pattern
+
 
 class Light(object):
+
   def on(self):
     pass
 
@@ -13,11 +16,12 @@ class Light(object):
 
 
 class DimmableLight(Light):
+
   def dim(self, brightness):
     pass
 
 
-class Blinkt(DimmableLight):
+class Blinkt(DimmableLight, pattern.Closable):
   """HAL class for Blinkt LED lights.
 
   Prerequisites:
@@ -26,35 +30,32 @@ class Blinkt(DimmableLight):
   _INTERVAL = 0.01  # sec
   _MAX_COLOR_CHANGE_DURATION = 1.0  # sec
   _MAX_BRIGHTNESS_CHANGE_DURATION = 1.0  # sec
-  _COLOR_STEP = 255 / (Blinkt._MAX_COLOR_CHANGE_DURATION / Blinkt._INTERVAL)
-  _BRIGHTNESS_STEP = 1.0 / (
-      Blinkt._MAX_BRIGHTNESS_CHANGE_DURATION / Blinkt._INTERVAL)
+  _STEP = [
+      255 / (Blinkt._MAX_COLOR_CHANGE_DURATION / Blinkt._INTERVAL),
+      255 / (Blinkt._MAX_COLOR_CHANGE_DURATION / Blinkt._INTERVAL),
+      255 / (Blinkt._MAX_COLOR_CHANGE_DURATION / Blinkt._INTERVAL),
+      1.0 / (Blinkt._MAX_BRIGHTNESS_CHANGE_DURATION / Blinkt._INTERVAL),
+  ]
 
-  def __init__(self):
+  def __init__(self, *args, **kwargs):
+    super(Blinkt, self).__init__(*args, **kwargs)
     self._current = (0, 0, 0, 0)
     self._target = (0, 0, 0, 0)
     self._lock = threading.Lock()
-    self._signal = threading.Event()
-    self._abort = False
-    self._worker = threading.Thread(target=self._run)
+    self._thread = None
+    self._abort = threading.Event()
 
   def close(self):
-    self._lock.acquire()
-    self._abort = True
-    self._signal.set()
-    self._lock.release()
+    if self._thread:
+      self._abort.set()
+      self._thread.join()
+      self._thread = None
 
   def on(self):
-    self._lock.acquire()
-    self._target = (255, 255, 255, 0.5)
-    self._signal.set()
-    self._lock.release()
+    self._make_change(255, 255, 255, 0.5)
 
   def off(self):
-    self._lock.acquire()
-    self._target = (0, 0, 0, 0.0)
-    self._signal.set()
-    self._lock.release()
+    self._make_change(0, 0, 0, 0.0)
 
   def dim(self, brightness):
     """Set brightness of all LEDs.
@@ -62,39 +63,44 @@ class Blinkt(DimmableLight):
     Args:
       brightness: 0-1.0
     """
-    self._lock.acquire()
-    self._target[3] = brightness
-    self._signal.set()
-    self._lock.release()
+    self._make_change(brightness=brightness)
 
   def set_color_temperature(color_temperature):
     r, g, b = _convert_K_to_RGB(color_temperature)
-    self._lock.acquire()
-    self._target = (r, g, b, self._target[3])
-    self._signal.set()
-    self._lock.release()
+    self._make_change(r, g, b)
+
+  def _make_change(self, r=None, g=None, b=None, brightness=None):
+    self._target[0] = r if r else self._target[0]
+    self._target[1] = g if g else self._target[1]
+    self._target[2] = b if b else self._target[2]
+    self._target[3] = brightness if brightness else self._target[3]
+
+    with self._lock:
+      if self._thread:
+        self._abort.set()
+        self._thread.join()
+      self._abort.clear()
+      self._target = new_values
+      self._thread = threading.Thread(name='Blinkt', target=self._transient)
+      self._thread.daemon = False
+      self._thread.start()
 
   def _run(self):
-    step = [
-        Blinkt._COLOR_STEP, Blinkt._COLOR_STEP, Blinkt._COLOR_STEP,
-        Blinkt._BRIGHTNESS_STEP
-    ]
-    while self._signal.wait() and not self._abort:
-      self._lock.acquire()
+    while True:
+      if self._abort.wait(self._INTERVAL):
+        break
+      if self._current == self._target:
+        break
 
       for i in range(4):
         if self._current[i] < self._target[i]:
-          self._current[i] = min(self._current[i] + step[i], self._target[i])
+          self._current[i] = min(self._current[i] + self._STEP[i],
+                                 self._target[i])
         else:
-          self._current[i] = max(self._current[i] - step[i], self._target[i])
+          self._current[i] = max(self._current[i] - self._STEP[i],
+                                 self._target[i])
       blinkt.set_all(self._current)
       blinkt.show()
-
-      if self._current == self._target:
-        self._signal.clear()
-
-      self._lock.release()
-      time.sleep(blinkt._INTERVAL)
 
 
 def _convert_K_to_RGB(colour_temperature):
