@@ -9,7 +9,6 @@ from common import pattern
 
 
 class Camera(pattern.Closable):
-
   def __init__(self,
                clock=clocks.SystemClock(),
                title=None,
@@ -43,7 +42,7 @@ class Camera(pattern.Closable):
     self._camera.capture(filepath, format='jpeg', thumbnail=None)
 
   def update_annotation(self):
-    now = self._clock.utc
+    now = self._clock.local_time
     self._camera.annotate_text = '{0} - {1: %b %d, %Y - %H:%M:%S}'.format(
         self._title, now)
 
@@ -54,7 +53,6 @@ class Camera(pattern.Closable):
 
 
 class Recorder(pattern.Worker):
-
   def __init__(self, camera, file_path='.', *args, **kwargs):
     """
     Args:

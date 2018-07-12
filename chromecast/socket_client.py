@@ -194,7 +194,7 @@ class SocketClient(threading.Thread):
 
     try:
       self.initialize_connection()
-    except ChromecastConnectionError:
+    except error.ChromecastConnectionError:
       self._report_connection_status(
           ConnectionStatus(CONNECTION_STATUS_DISCONNECTED,
                            NetworkAddress(self.host, self.port)))
@@ -247,7 +247,7 @@ class SocketClient(threading.Thread):
         if self.stop.is_set():
           self.logger.error(
               "Failed to connect: %s. aborting due to stop signal.", err)
-          raise ChromecastConnectionError("Failed to connect")
+          raise error.ChromecastConnectionError("Failed to connect")
 
         self._report_connection_status(
             ConnectionStatus(CONNECTION_STATUS_FAILED,
@@ -265,7 +265,7 @@ class SocketClient(threading.Thread):
     else:
       self.stop.set()
       self.logger.error("Failed to connect. No retries.")
-      raise ChromecastConnectionError("Failed to connect")
+      raise error.ChromecastConnectionError("Failed to connect")
 
   def disconnect(self):
     """ Disconnect socket connection to Chromecast device """
@@ -341,7 +341,7 @@ class SocketClient(threading.Thread):
     try:
       if not self._check_connection():
         return 0
-    except ChromecastConnectionError:
+    except error.ChromecastConnectionError:
       return 1
 
     # poll the socket
@@ -423,7 +423,7 @@ class SocketClient(threading.Thread):
                            NetworkAddress(self.host, self.port)))
       try:
         self.initialize_connection()
-      except ChromecastConnectionError:
+      except error.ChromecastConnectionError:
         self.stop.set()
       return False
     return True
@@ -584,7 +584,7 @@ class SocketClient(threading.Thread):
         self._force_recon = True
         self.logger.info('Error writing to socket.')
     else:
-      raise NotConnected("Chromecast is connecting...")
+      raise error.NotConnected("Chromecast is connecting...")
 
   def send_platform_message(self,
                             namespace,
@@ -708,7 +708,7 @@ class HeartbeatController(base.BaseController):
             PLATFORM_DESTINATION_ID,
             self.namespace, {MESSAGE_TYPE: TYPE_PONG},
             no_add_request_id=True)
-      except PyChromecastStopped:
+      except error.PyChromecastStopped:
         self._socket_client.logger.debug(
             "Heartbeat error when sending response, "
             "Chromecast connection has stopped")
@@ -726,7 +726,7 @@ class HeartbeatController(base.BaseController):
     self.last_ping = time.time()
     try:
       self.send_message({MESSAGE_TYPE: TYPE_PING})
-    except NotConnected:
+    except error.NotConnected:
       self._socket_client.logger.error(
           "Chromecast is disconnected. " + "Cannot ping until reconnected.")
 
