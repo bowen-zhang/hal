@@ -138,16 +138,16 @@ class DualRotaryEncoder(pattern.EventEmitter, pattern.Logger):
         self.emit('large_rotate', Direction.COUNTERCLOCKWISE,
                   self._large_counter)
         self.emit('large_counterclockwise')
-    elif channel == self.small_clk_pin:
-      if state != self._states[self.small_dt_pin]:
+    elif channel == self._small_clk_pin:
+      if state != self._states[self._small_dt_pin]:
         self._small_counter += 1
         self.logger.info(
             '[{0}] [small knob] rotated clockwise (value={1})'.format(
                 self._name, self._small_counter))
         self.emit('small_rotate', Direction.CLOCKWISE, self._small_counter)
         self.emit('small_clockwise')
-    elif channel == self.small_dt_pin:
-      if state != self._states[self.small_clk_pin]:
+    elif channel == self._small_dt_pin:
+      if state != self._states[self._small_clk_pin]:
         self._small_counter -= 1
         self.logger.info(
             '[{0}] [small knob] rotated counterclockwise (value={1})'.format(
