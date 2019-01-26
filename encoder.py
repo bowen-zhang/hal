@@ -118,6 +118,7 @@ class DualRotaryEncoder(pattern.EventEmitter, pattern.Logger):
 
   def _callback(self, channel):
     state = GPIO.input(channel)
+    print '{0}={1}'.format(channel, state)
     if state == self._states[channel]:
       return
 
