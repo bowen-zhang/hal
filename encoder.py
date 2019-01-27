@@ -1,6 +1,7 @@
 from RPi import GPIO
 
 from common import pattern
+from hal import switch
 
 
 class Direction(object):
@@ -8,7 +9,7 @@ class Direction(object):
   COUNTERCLOCKWISE = -1
 
 
-class RotaryEncoder(pattern.EventEmitter, pattern.Logger):
+class RotaryEncoder(switch.PushSwitch):
   """Class for pushable single rotary encoder.
 
   Events:
@@ -21,7 +22,7 @@ class RotaryEncoder(pattern.EventEmitter, pattern.Logger):
   """
 
   def __init__(self, name, clk_pin, dt_pin, sw_pin, *args, **kwargs):
-    super(RotaryEncoder, self).__init__(*args, **kwargs)
+    super(RotaryEncoder, self).__init__(name=name, pin=sw_pin, *args, **kwargs)
     self._name = name
     self._counter = 0
     GPIO.setmode(GPIO.BCM)
@@ -31,10 +32,6 @@ class RotaryEncoder(pattern.EventEmitter, pattern.Logger):
     self._dt_last_state = GPIO.input(dt_pin)
     GPIO.add_event_detect(clk_pin, GPIO.BOTH, callback=self._clk_callback)
     GPIO.add_event_detect(dt_pin, GPIO.BOTH, callback=self._dt_callback)
-
-    if sw_pin:
-      GPIO.setup(sw_pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-      GPIO.add_event_detect(sw_pin, GPIO.FALLING, callback=self._sw_callback)
 
   def reset(self):
     self._counter = 0
@@ -65,12 +62,8 @@ class RotaryEncoder(pattern.EventEmitter, pattern.Logger):
       self.emit('clockwise')
     self._dt_last_state = state
 
-  def _sw_callback(self, channel):
-    self.logger.info('[{0}] pushed.'.format(self._name))
-    self.emit('push')
 
-
-class DualRotaryEncoder(pattern.EventEmitter, pattern.Logger):
+class DualRotaryEncoder(switch.PushSwitch):
   """Class for pushable dual rotary encoder.
 
   Events:
@@ -89,8 +82,7 @@ class DualRotaryEncoder(pattern.EventEmitter, pattern.Logger):
 
   def __init__(self, name, large_clk_pin, large_dt_pin, small_clk_pin,
                small_dt_pin, sw_pin, *args, **kwargs):
-    super(DualRotaryEncoder, self).__init__(self, *args, **kwargs)
-    self._name = name
+    super(DualRotaryEncoder, self).__init__(name=name, pin=sw_pin, *args, **kwargs)
     self._large_clk_pin = large_clk_pin
     self._large_dt_pin = large_dt_pin
     self._small_clk_pin = small_clk_pin
@@ -104,17 +96,10 @@ class DualRotaryEncoder(pattern.EventEmitter, pattern.Logger):
       GPIO.setup(pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
       GPIO.add_event_detect(pin, GPIO.BOTH, callback=self._callback)
       self._states[pin] = GPIO.input(pin)
-    if sw_pin:
-      GPIO.setup(sw_pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-      GPIO.add_event_detect(sw_pin, GPIO.FALLING, callback=self._on_pushed)
 
   def reset(self):
     self._large_counter = 0
     self._small_counter = 0
-
-  def _on_pushed(self, channel):
-    self.logger.info('{0}: pushed'.format(self._name))
-    self.emit('push')
 
   def _callback(self, channel):
     state = GPIO.input(channel)
