@@ -24,7 +24,7 @@ class PushSwitch(pattern.EventEmitter, pattern.Logger):
 
   def _on_pressed(self, channel):
     interval = time.time() - self._last_press
+    self._last_press = time.time()
     if interval > self._IGNORE_THRESHOLD:
       self.logger.info('[{0}] pressed (interval={1})'.format(self._name, interval))
       self.emit('push')
-    self._last_press = time.time()
