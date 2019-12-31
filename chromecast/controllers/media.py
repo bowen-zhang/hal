@@ -7,7 +7,7 @@ from datetime import datetime
 from collections import namedtuple
 import threading
 
-import base
+from . import base
 
 APP_MEDIA_RECEIVER = "CC1AD845"
 

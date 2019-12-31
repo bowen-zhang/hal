@@ -1,5 +1,5 @@
 import time
-import ssd1306
+from . import ssd1306
 
 
 def test():

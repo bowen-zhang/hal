@@ -435,9 +435,9 @@ class RFIDCard(object):
       try:
         self.authenticate(block=i, mode=_PICC_AUTHENT1A)
         data = self.read(i)
-        print 'Sector {0}: {1}'.format(i, data)
+        print('Sector {0}: {1}'.format(i, data))
       except MFRC522Exception as e:
-        print str(e)
+        print(str(e))
 
   def _to_int32(self, data):
     return data[0] << 24 | data[1] << 16 | data[2] << 8 | data[3]

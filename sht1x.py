@@ -271,7 +271,7 @@ class SHT1x(pattern.Logger):
         :return: None.
         """
     command_name = [
-        key for key in self.Commands.keys()
+        key for key in list(self.Commands.keys())
         if self.Commands[key] == self._command
     ]
     if not command_name:

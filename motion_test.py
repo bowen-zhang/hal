@@ -3,7 +3,7 @@ import time
 
 
 def on_motion(has_motion):
-  print '{0}: {1}'.format(time.time(), 'Detected' if has_motion else 'Gone')
+  print('{0}: {1}'.format(time.time(), 'Detected' if has_motion else 'Gone'))
 
 
 with motion.PIRMotionSensor(pin=14) as m:

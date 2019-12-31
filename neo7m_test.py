@@ -4,7 +4,7 @@ import signal
 import sys
 import time
 
-import neo7m
+from . import neo7m
 
 stdscr = None
 gps = neo7m.Gps.get_instance()
@@ -13,7 +13,7 @@ gps = neo7m.Gps.get_instance()
 # Capture SIGINT for cleanup when the script is aborted
 def terminate(signal, frame):
   global gps
-  print 'Exiting...'
+  print('Exiting...')
   gps.stop()
   exit(0)
 

@@ -12,12 +12,12 @@ from collections import namedtuple
 from struct import pack
 from struct import unpack
 
-import chromecast_pb2
-import error
-import types
+from . import chromecast_pb2
+from . import error
+from . import types
 
-from controllers import base
-from controllers import media
+from .controllers import base
+from .controllers import media
 
 NS_CONNECTION = 'urn:x-cast:com.google.cast.tp.connection'
 NS_RECEIVER = 'urn:x-cast:com.google.cast.receiver'
@@ -209,7 +209,7 @@ class SocketClient(threading.Thread):
       self.socket = None
 
     # Make sure nobody is blocking.
-    for callback in self._request_callbacks.values():
+    for callback in list(self._request_callbacks.values()):
       callback['event'].set()
 
     self.app_namespaces = []
@@ -465,7 +465,7 @@ class SocketClient(threading.Thread):
       except Exception:  # pylint: disable=broad-except
         pass
 
-    for handler in self._handlers.values():
+    for handler in list(self._handlers.values()):
       try:
         handler.tear_down()
       except Exception:  # pylint: disable=broad-except

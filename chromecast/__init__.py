@@ -1,10 +1,10 @@
 import collections
 import enum
-import error
+from . import error
 import requests
-import socket_client
+from . import socket_client
 import threading
-import types
+from . import types
 import uuid
 
 

@@ -34,10 +34,10 @@ def write(s, data):
 
 
 def detect_baudrate():
-  print 'Detecting GPS baud rate...'
+  print('Detecting GPS baud rate...')
   baud_rates = [115200, 57600, 9600, 19200, 38400]
   for baud_rate in baud_rates:
-    print 'Attempting {0}...'.format(baud_rate)
+    print('Attempting {0}...'.format(baud_rate))
     with serial.Serial('/dev/ttyS0', baud_rate) as s:
       deadline = time.time() + 3
       while time.time() < deadline:
@@ -45,19 +45,19 @@ def detect_baudrate():
         if '\r\n$GP' in buf:
           return baud_rate
 
-  raise 'Unable to detect GPS baud rate.'
+  raise Exception('Unable to detect GPS baud rate.')
 
 
 def init_gps():
   #baud_rate = detect_baudrate()
   baud_rate = 9600
   if baud_rate != 115200:
-    print 'Setting GPS baud rate to 115200...'
+    print('Setting GPS baud rate to 115200...')
     with serial.Serial('/dev/ttyS0', baud_rate) as s:
       write(s, '\x06\x00\x14\x00' + '\x01\x00\x00\x00\xD0\x08\x00\x00' +
             '\x00\xC2\x01\x00\x07\x00\x03\x00' + '\x00\x00\x00\x00')
 
-  print 'Setting GPS update rate to 10HZ...'
+  print('Setting GPS update rate to 10HZ...')
   with serial.Serial('/dev/ttyS0', 115200) as s:
     write(s, '\x06\x08\x06\x00' + '\x64\x00\x01\x00\x01\x00')
 

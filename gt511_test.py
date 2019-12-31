@@ -5,38 +5,38 @@ from hal import gt511
 
 
 def enroll(scanner):
-  position = input('Position to enroll: ')
-  print 'Place finger on scanner now.'
+  position = eval(input('Position to enroll: '))
+  print('Place finger on scanner now.')
   scanner.set_cmos_led(True)
   scanner.wait_for_finger()
-  print 'Enrolling...'
+  print('Enrolling...')
   if scanner.is_enrolled(position):
     scanner.delete_position(position)
   scanner.enroll(position)
   scanner.set_cmos_led(False)
-  print 'Done!'
+  print('Done!')
 
 
 def identify(scanner):
-  print 'Place finger on scanner now.'
+  print('Place finger on scanner now.')
   scanner.set_cmos_led(True)
   scanner.wait_for_finger()
   pos = scanner.identify()
   if pos >= 0:
-    print 'Identified as #{0}.'.format(pos)
+    print('Identified as #{0}.'.format(pos))
   else:
-    print 'Unknown'
+    print('Unknown')
   scanner.set_cmos_led(False)
 
 
 def capture(scanner):
-  print 'Place finger on scanner now.'
+  print('Place finger on scanner now.')
   scanner.set_cmos_led(True)
   scanner.wait_for_finger()
-  print 'Scanning...'
+  print('Scanning...')
   img = scanner.get_image()
   img.save('1.png')
-  print 'Saved image.'
+  print('Saved image.')
   scanner.set_cmos_led(False)
 
 
@@ -47,15 +47,15 @@ def test_gt511():
   state = ''
   for i in range(20):
     state += '[x]' if scanner.is_enrolled(i) else '[ ]'
-  print 'Enrollment: ' + state
+  print('Enrollment: ' + state)
   try:
     while True:
-      print 'Options:'
-      print '  1. Enroll'
-      print '  2. Identify'
-      print '  3. Capture'
-      print '  0. Exit'
-      option = input('Please choose: ')
+      print('Options:')
+      print('  1. Enroll')
+      print('  2. Identify')
+      print('  3. Capture')
+      print('  0. Exit')
+      option = eval(input('Please choose: '))
       if option == 0:
         break
       elif option == 1:
@@ -65,7 +65,7 @@ def test_gt511():
       elif option == 3:
         capture(scanner)
   except Exception as e:
-    print 'exception: {0}'.format(e)
+    print('exception: {0}'.format(e))
   finally:
     scanner.set_cmos_led(False)
     scanner.close()
@@ -74,7 +74,7 @@ def test_gt511():
 def test_monitor():
   monitor = gt511.FingerprintMonitor()
   monitor.start()
-  print 'Waiting...'
+  print('Waiting...')
   try:
     while True:
       time.sleep(1)

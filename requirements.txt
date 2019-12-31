@@ -1,4 +1,6 @@
+picamera
 pillow
+RPi.GPIO
 gps3
 luma.core
 luma.oled

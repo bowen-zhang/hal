@@ -2,13 +2,13 @@ import signal
 import sys
 import time
 
-import berry_imu
+from . import berry_imu
 
 abort = False
 
 def terminate(signal, frame):
     global abort
-    print 'Exiting...'
+    print('Exiting...')
     abort = True
 
 def test_g_load():

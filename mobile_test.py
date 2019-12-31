@@ -8,13 +8,13 @@ def test_mobile():
   m = mobile.Mobile()
   try:
     m.connect()
-    print 'Pinging google.com...'
+    print('Pinging google.com...')
     mobile.ping('google.com')
-    print 'Ping succeeded.'
+    print('Ping succeeded.')
     m.disconnect()
   except Exception as e:
     m.disconnect()
-    print e
+    print(e)
 
 
 if __name__ == '__main__':

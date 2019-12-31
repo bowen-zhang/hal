@@ -172,23 +172,23 @@ class FingerprintScanner(pattern.Logger):
   def enroll(self, position):
     self._send_command('EnrollStart', position)
     self._get_response()
-    print 'Scanning #1...'
+    print('Scanning #1...')
     self.capture(best_image=True)
     self._send_command('Enroll1')
     self._get_response()
-    print 'Lift finger up...'
+    print('Lift finger up...')
     while self.is_finger_pressed():
       time.sleep(0.5)
-    print 'Press finger again...'
+    print('Press finger again...')
     while not self.is_finger_pressed():
       time.sleep(0.5)
     self.capture(best_image=True)
     self._send_command('Enroll2')
     self._get_response()
-    print 'Lift finger up...'
+    print('Lift finger up...')
     while self.is_finger_pressed():
       time.sleep(0.5)
-    print 'Press finger again...'
+    print('Press finger again...')
     while not self.is_finger_pressed():
       time.sleep(0.5)
     self.capture(best_image=True)

@@ -12,10 +12,10 @@ file = None
 def test_audio():
   devices = audio.get_all_devices()
   for i, device in enumerate(devices):
-    print '--------------------'
-    print 'device {0}: {1}'.format(i, device['name'])
-    print device
-    print
+    print('--------------------')
+    print('device {0}: {1}'.format(i, device['name']))
+    print(device)
+    print()
 
   global file
   file = wave.open('test.wav', 'wb')

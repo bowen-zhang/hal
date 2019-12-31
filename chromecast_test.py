@@ -1,4 +1,4 @@
-import chromecast
+from . import chromecast
 
 
 def test():
