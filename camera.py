@@ -97,7 +97,8 @@ class Streamer(pattern.Worker):
     super(Streamer, self).__init__(
         worker_name='CameraStreamer', *args, **kwargs)
 
-    web.add_url_rule('/video', view_func=self._on_video_request)
+    if web:
+      web.add_url_rule('/video', view_func=self._on_video_request)
     self._width = width
     self._height = height
     self._quality = quality
