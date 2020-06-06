@@ -4,8 +4,8 @@ import io
 import picamera
 import time
 
-from common import clocks
-from common import pattern
+from third_party.common import clocks
+from third_party.common import pattern
 
 
 class Camera(pattern.Closable):
